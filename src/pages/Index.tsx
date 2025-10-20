@@ -108,8 +108,7 @@ const Index = () => {
           {requests.map((request) => (
             <RequestCard
               key={request.id}
-              request={request}
-              currentUserId={user.id}
+              {...request}
               onClaim={fetchRequests}
             />
           ))}

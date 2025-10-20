@@ -152,10 +152,6 @@ const Browse = () => {
               <RequestCard
                 key={request.id}
                 {...request}
-                locationAddress={request.location_address}
-                imageUrl={request.image_url}
-                createdAt={request.created_at}
-                userProfile={{ full_name: 'Anonymous' }}
                 onClaim={() => handleClaim(request.id)}
               />
             ))}
