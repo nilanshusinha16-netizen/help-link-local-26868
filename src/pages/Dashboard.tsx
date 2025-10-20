@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/integrations/supabase/auth';
 import { useUserRole } from '@/hooks/useUserRole';
 import Navbar from '@/components/Navbar';
-import RequestCard from '@/components/RequestCard';
+import { RequestCard } from '@/components/RequestCard';
 import HelperLocationSetup from '@/components/HelperLocationSetup';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
