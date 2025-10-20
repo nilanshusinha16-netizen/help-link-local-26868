@@ -1,108 +1,101 @@
-import { Card, CardContent, CardFooter, CardHeader } from './ui/card';
-import { Badge } from './ui/badge';
-import { Button } from './ui/button';
-import { MapPin, Clock, User } from 'lucide-react';
-import { formatDistanceToNow } from 'date-fns';
+import { format } from "date-fns";
+import { Button } from "./ui/button";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "./ui/card";
+import { Badge } from "./ui/badge";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
-interface RequestCardProps {
+interface Request {
   id: string;
   title: string;
   description: string;
-  category: string;
-  urgency: string;
   status: string;
-  locationAddress: string;
-  imageUrl?: string;
-  createdAt: string;
-  userProfile?: {
-    full_name: string;
-  };
-  onClaim?: () => void;
-  onView?: () => void;
+  claimed_by: string | null;
+  created_at: string;
+  user_id: string;
+  category?: string;
+  urgency?: string;
 }
 
-const urgencyColors = {
-  low: 'bg-muted text-muted-foreground',
-  medium: 'bg-secondary text-secondary-foreground',
-  high: 'bg-primary text-primary-foreground',
-  critical: 'bg-urgent text-urgent-foreground',
-};
+interface RequestCardProps {
+  request: Request;
+  currentUserId: string;
+  onClaim: () => void;
+}
 
-const statusColors = {
-  open: 'bg-accent text-accent-foreground',
-  claimed: 'bg-secondary text-secondary-foreground',
-  in_progress: 'bg-secondary text-secondary-foreground',
-  fulfilled: 'bg-muted text-muted-foreground',
-  cancelled: 'bg-destructive text-destructive-foreground',
-};
+export const RequestCard = ({ request, currentUserId, onClaim }: RequestCardProps) => {
+  const { toast } = useToast();
+  const isOwner = request.user_id === currentUserId;
+  const isClaimed = request.status === "claimed" || request.claimed_by !== null;
 
-const RequestCard = ({
-  title,
-  description,
-  category,
-  urgency,
-  status,
-  locationAddress,
-  imageUrl,
-  createdAt,
-  userProfile,
-  onClaim,
-  onView,
-}: RequestCardProps) => {
+  const handleClaim = async () => {
+    try {
+      const { error: updateError } = await supabase
+        .from("aid_requests")
+        .update({
+          claimed_by: currentUserId,
+          status: "claimed",
+          claimed_at: new Date().toISOString(),
+        })
+        .eq("id", request.id);
+
+      if (updateError) throw updateError;
+
+      // Create notification for request owner
+      const { error: notificationError } = await supabase
+        .from("notifications")
+        .insert({
+          user_id: request.user_id,
+          request_id: request.id,
+          message: `Your request "${request.title}" has been claimed!`,
+        });
+
+      if (notificationError) throw notificationError;
+
+      toast({ title: "Request claimed successfully!" });
+      onClaim();
+    } catch (error: any) {
+      toast({
+        title: "Error claiming request",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
-    <Card className="overflow-hidden hover:shadow-lg transition-shadow">
-      {imageUrl && (
-        <div className="aspect-video w-full overflow-hidden bg-muted">
-          <img src={imageUrl} alt={title} className="h-full w-full object-cover" />
-        </div>
-      )}
-      <CardHeader className="space-y-2">
-        <div className="flex items-start justify-between gap-2">
-          <h3 className="text-lg font-semibold line-clamp-2">{title}</h3>
-          <Badge className={urgencyColors[urgency as keyof typeof urgencyColors]}>
-            {urgency}
-          </Badge>
-        </div>
-        <div className="flex gap-2">
-          <Badge variant="outline" className="capitalize">
-            {category.replace('_', ' ')}
-          </Badge>
-          <Badge className={statusColors[status as keyof typeof statusColors]}>
-            {status.replace('_', ' ')}
+    <Card className="animate-fade-in hover:shadow-lg transition-shadow">
+      <CardHeader>
+        <div className="flex items-start justify-between">
+          <div className="space-y-1">
+            <CardTitle className="text-xl">{request.title}</CardTitle>
+            <CardDescription>
+              Posted {format(new Date(request.created_at), "MMM d, yyyy")}
+            </CardDescription>
+          </div>
+          <Badge
+            variant={isClaimed ? "secondary" : "default"}
+            className={isClaimed ? "bg-[hsl(var(--success))]" : ""}
+          >
+            {isClaimed ? "Claimed" : "Open"}
           </Badge>
         </div>
       </CardHeader>
-      <CardContent className="space-y-3">
-        <p className="text-sm text-muted-foreground line-clamp-3">{description}</p>
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <MapPin className="h-4 w-4" />
-          <span className="line-clamp-1">{locationAddress}</span>
-        </div>
-        <div className="flex items-center justify-between text-sm text-muted-foreground">
-          <div className="flex items-center gap-2">
-            <User className="h-4 w-4" />
-            <span>{userProfile?.full_name || 'Anonymous'}</span>
+      <CardContent>
+        <p className="text-muted-foreground">{request.description}</p>
+        {request.category && (
+          <div className="mt-3">
+            <Badge variant="outline">{request.category}</Badge>
           </div>
-          <div className="flex items-center gap-1">
-            <Clock className="h-4 w-4" />
-            <span>{formatDistanceToNow(new Date(createdAt), { addSuffix: true })}</span>
-          </div>
-        </div>
-      </CardContent>
-      <CardFooter className="flex gap-2">
-        {onView && (
-          <Button variant="outline" className="flex-1" onClick={onView}>
-            View Details
-          </Button>
         )}
-        {onClaim && status === 'open' && (
-          <Button className="flex-1" onClick={onClaim}>
+      </CardContent>
+      {!isOwner && !isClaimed && (
+        <CardFooter>
+          <Button onClick={handleClaim} className="w-full">
             Claim Request
           </Button>
-        )}
-      </CardFooter>
+        </CardFooter>
+      )}
     </Card>
   );
 };
-
-export default RequestCard;
