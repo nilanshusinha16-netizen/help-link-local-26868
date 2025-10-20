@@ -5,6 +5,8 @@ import { NotificationBar } from "@/components/NotificationBar";
 import { RequestCard } from "@/components/RequestCard";
 import { CreateRequestForm } from "@/components/CreateRequestForm";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { LogOut, Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -13,6 +15,8 @@ const Index = () => {
   const [requests, setRequests] = useState<any[]>([]);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [urgencyFilter, setUrgencyFilter] = useState<string>("all");
   const { toast } = useToast();
 
   useEffect(() => {
@@ -68,6 +72,15 @@ const Index = () => {
     return <AuthForm onAuthSuccess={checkUser} />;
   }
 
+  const myRequests = requests.filter((req) => req.user_id === user.id);
+  const browseRequests = requests.filter((req) => {
+    if (req.user_id === user.id) return false;
+    if (req.status !== "open") return false;
+    if (categoryFilter !== "all" && req.category !== categoryFilter) return false;
+    if (urgencyFilter !== "all" && req.urgency !== urgencyFilter) return false;
+    return true;
+  });
+
   return (
     <div className="min-h-screen pb-20">
       <NotificationBar />
@@ -82,45 +95,104 @@ const Index = () => {
       </header>
 
       <main className="container mx-auto px-4 py-8">
-        <div className="mb-8">
-          <Button
-            onClick={() => setShowCreateForm(!showCreateForm)}
-            className="w-full sm:w-auto"
-          >
-            <Plus className="mr-2 h-4 w-4" />
-            {showCreateForm ? "Cancel" : "Create Request"}
-          </Button>
-        </div>
+        <Tabs defaultValue="my-requests" className="w-full">
+          <TabsList className="grid w-full max-w-md mx-auto mb-8 grid-cols-2">
+            <TabsTrigger value="my-requests">My Requests</TabsTrigger>
+            <TabsTrigger value="browse">Browse Requests</TabsTrigger>
+          </TabsList>
 
-        {showCreateForm && (
-          <div className="mb-8 animate-fade-in">
-            <CreateRequestForm
-              userId={user.id}
-              onSuccess={() => {
-                setShowCreateForm(false);
-                fetchRequests();
-              }}
-            />
-          </div>
-        )}
+          <TabsContent value="my-requests" className="space-y-8">
+            <div>
+              <Button
+                onClick={() => setShowCreateForm(!showCreateForm)}
+                className="w-full sm:w-auto"
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                {showCreateForm ? "Cancel" : "Create Request"}
+              </Button>
+            </div>
 
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {requests.map((request) => (
-            <RequestCard
-              key={request.id}
-              {...request}
-              onClaim={fetchRequests}
-            />
-          ))}
-        </div>
+            {showCreateForm && (
+              <div className="animate-fade-in">
+                <CreateRequestForm
+                  userId={user.id}
+                  onSuccess={() => {
+                    setShowCreateForm(false);
+                    fetchRequests();
+                  }}
+                />
+              </div>
+            )}
 
-        {requests.length === 0 && (
-          <div className="text-center py-12">
-            <p className="text-muted-foreground text-lg">
-              No requests yet. Create one to get started!
-            </p>
-          </div>
-        )}
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {myRequests.map((request) => (
+                <RequestCard
+                  key={request.id}
+                  {...request}
+                  onClaim={fetchRequests}
+                />
+              ))}
+            </div>
+
+            {myRequests.length === 0 && (
+              <div className="text-center py-12">
+                <p className="text-muted-foreground text-lg">
+                  No requests yet. Create one to get started!
+                </p>
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="browse" className="space-y-6">
+            <div className="flex flex-col sm:flex-row gap-4">
+              <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                <SelectTrigger className="w-full sm:w-[200px]">
+                  <SelectValue placeholder="Category" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Categories</SelectItem>
+                  <SelectItem value="food">Food</SelectItem>
+                  <SelectItem value="shelter">Shelter</SelectItem>
+                  <SelectItem value="medical">Medical</SelectItem>
+                  <SelectItem value="clothing">Clothing</SelectItem>
+                  <SelectItem value="education">Education</SelectItem>
+                  <SelectItem value="other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select value={urgencyFilter} onValueChange={setUrgencyFilter}>
+                <SelectTrigger className="w-full sm:w-[200px]">
+                  <SelectValue placeholder="Urgency" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Urgencies</SelectItem>
+                  <SelectItem value="low">Low</SelectItem>
+                  <SelectItem value="medium">Medium</SelectItem>
+                  <SelectItem value="high">High</SelectItem>
+                  <SelectItem value="critical">Critical</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {browseRequests.map((request) => (
+                <RequestCard
+                  key={request.id}
+                  {...request}
+                  onClaim={fetchRequests}
+                />
+              ))}
+            </div>
+
+            {browseRequests.length === 0 && (
+              <div className="text-center py-12">
+                <p className="text-muted-foreground text-lg">
+                  No requests available to browse right now.
+                </p>
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
       </main>
     </div>
   );
