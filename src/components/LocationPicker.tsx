@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
 import { Button } from './ui/button';
 import { MapPin, Loader2 } from 'lucide-react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { toast } from 'sonner';
+import { useToast } from '@/hooks/use-toast';
 
 // Fix for default marker icon
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -36,6 +36,7 @@ const LocationPicker = ({ onLocationSelect, initialLat, initialLng }: LocationPi
   );
   const [loading, setLoading] = useState(false);
   const [showMap, setShowMap] = useState(false);
+  const { toast } = useToast();
 
   const getCurrentLocation = () => {
     setLoading(true);
@@ -54,7 +55,7 @@ const LocationPicker = ({ onLocationSelect, initialLat, initialLng }: LocationPi
             const data = await response.json();
             const address = data.display_name || `${lat}, ${lng}`;
             onLocationSelect(lat, lng, address);
-            toast.success('Location selected!');
+            toast({ title: 'Location selected!' });
           } catch (error) {
             console.error('Error getting address:', error);
             onLocationSelect(lat, lng, `${lat}, ${lng}`);
@@ -63,19 +64,31 @@ const LocationPicker = ({ onLocationSelect, initialLat, initialLng }: LocationPi
         },
         (error) => {
           console.error('Error getting location:', error);
-          toast.error('Could not get your location. Please enable location services.');
+          toast({ 
+            title: 'Location Error',
+            description: 'Could not get your location. Please enable location services.',
+            variant: 'destructive'
+          });
           setLoading(false);
         }
       );
     } else {
-      toast.error('Geolocation is not supported by your browser');
+      toast({ 
+        title: 'Not Supported',
+        description: 'Geolocation is not supported by your browser',
+        variant: 'destructive'
+      });
       setLoading(false);
     }
   };
 
   const handleMapSelection = async () => {
     if (!position) {
-      toast.error('Please select a location on the map');
+      toast({ 
+        title: 'No Location Selected',
+        description: 'Please click on the map to select a location',
+        variant: 'destructive'
+      });
       return;
     }
 
@@ -88,7 +101,7 @@ const LocationPicker = ({ onLocationSelect, initialLat, initialLng }: LocationPi
       const address = data.display_name || `${position[0]}, ${position[1]}`;
       onLocationSelect(position[0], position[1], address);
       setShowMap(false);
-      toast.success('Location selected!');
+      toast({ title: 'Location selected!' });
     } catch (error) {
       console.error('Error getting address:', error);
       onLocationSelect(position[0], position[1], `${position[0]}, ${position[1]}`);
@@ -129,9 +142,11 @@ const LocationPicker = ({ onLocationSelect, initialLat, initialLng }: LocationPi
         <div className="space-y-2">
           <div className="h-[400px] rounded-lg overflow-hidden border">
             <MapContainer
+              key="location-picker-map"
               center={position || [20, 0]}
               zoom={position ? 13 : 2}
               style={{ height: '100%', width: '100%' }}
+              scrollWheelZoom={true}
             >
               <TileLayer
                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
