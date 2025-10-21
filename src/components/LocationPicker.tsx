@@ -46,6 +46,7 @@ const LocationPicker = ({ onLocationSelect, initialLat, initialLng }: LocationPi
           const lat = pos.coords.latitude;
           const lng = pos.coords.longitude;
           setPosition([lat, lng]);
+          setShowMap(true); // Show map with current location
           
           // Reverse geocoding using Nominatim (OpenStreetMap)
           try {
@@ -55,7 +56,7 @@ const LocationPicker = ({ onLocationSelect, initialLat, initialLng }: LocationPi
             const data = await response.json();
             const address = data.display_name || `${lat}, ${lng}`;
             onLocationSelect(lat, lng, address);
-            toast({ title: 'Location selected!' });
+            toast({ title: 'Current location found! Confirm to use this location.' });
           } catch (error) {
             console.error('Error getting address:', error);
             onLocationSelect(lat, lng, `${lat}, ${lng}`);

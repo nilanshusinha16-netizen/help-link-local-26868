@@ -1,10 +1,23 @@
 import { format } from "date-fns";
+import { useState } from "react";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "./ui/card";
 import { Badge } from "./ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/integrations/supabase/auth";
+import { MapContainer, TileLayer, Marker } from 'react-leaflet';
+import { MapPin } from "lucide-react";
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+
+// Fix for default marker icon
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+});
 
 interface RequestCardProps {
   id: string;
@@ -19,6 +32,8 @@ interface RequestCardProps {
   urgency?: string;
   location_address?: string;
   locationAddress?: string;
+  location_lat?: number;
+  location_lng?: number;
   image_url?: string;
   imageUrl?: string;
   userProfile?: { full_name?: string };
@@ -37,13 +52,18 @@ export const RequestCard = ({
   user_id,
   category,
   urgency,
+  location_address,
+  location_lat,
+  location_lng,
   onClaim,
 }: RequestCardProps) => {
   const { toast } = useToast();
   const { user } = useAuth();
+  const [showMap, setShowMap] = useState(false);
   const isOwner = user_id === user?.id;
   const isClaimed = status === "claimed" || claimed_by !== null;
   const displayDate = created_at || createdAt;
+  const hasValidLocation = location_lat && location_lng && location_lat !== 0 && location_lng !== 0;
 
   const handleClaim = async () => {
     if (!user) {
@@ -109,11 +129,61 @@ export const RequestCard = ({
           </Badge>
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-4">
         <p className="text-muted-foreground">{description}</p>
-        {category && (
-          <div className="mt-3">
-            <Badge variant="outline">{category}</Badge>
+        
+        <div className="flex flex-wrap gap-2">
+          {category && <Badge variant="outline">{category}</Badge>}
+          {urgency && (
+            <Badge 
+              variant={urgency === 'critical' ? 'destructive' : urgency === 'high' ? 'default' : 'secondary'}
+            >
+              {urgency}
+            </Badge>
+          )}
+        </div>
+
+        {location_address && (
+          <div className="space-y-2">
+            <div className="flex items-start gap-2 text-sm text-muted-foreground">
+              <MapPin className="h-4 w-4 mt-0.5 shrink-0" />
+              <span>{location_address}</span>
+            </div>
+            
+            {hasValidLocation && (
+              <>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowMap(!showMap)}
+                  className="w-full"
+                >
+                  <MapPin className="h-4 w-4 mr-2" />
+                  {showMap ? 'Hide Map' : 'View Location on Map'}
+                </Button>
+                
+                {showMap && (
+                  <div className="h-[200px] rounded-lg overflow-hidden border">
+                    <MapContainer
+                      key={`request-map-${id}`}
+                      center={[location_lat, location_lng]}
+                      zoom={14}
+                      style={{ height: '100%', width: '100%' }}
+                      scrollWheelZoom={false}
+                      dragging={false}
+                      zoomControl={false}
+                    >
+                      <TileLayer
+                        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                      />
+                      <Marker position={[location_lat, location_lng]} />
+                    </MapContainer>
+                  </div>
+                )}
+              </>
+            )}
           </div>
         )}
       </CardContent>
