@@ -45,8 +45,6 @@ const LocationPicker = ({ onLocationSelect, initialLat, initialLng }: LocationPi
         async (pos) => {
           const lat = pos.coords.latitude;
           const lng = pos.coords.longitude;
-          setPosition([lat, lng]);
-          setShowMap(true); // Show map with current location
           
           // Reverse geocoding using Nominatim (OpenStreetMap)
           try {
@@ -56,10 +54,16 @@ const LocationPicker = ({ onLocationSelect, initialLat, initialLng }: LocationPi
             const data = await response.json();
             const address = data.display_name || `${lat}, ${lng}`;
             onLocationSelect(lat, lng, address);
+            
+            // Set position and show map after successful geocoding
+            setPosition([lat, lng]);
+            setShowMap(true);
             toast({ title: 'Current location found! Confirm to use this location.' });
           } catch (error) {
             console.error('Error getting address:', error);
             onLocationSelect(lat, lng, `${lat}, ${lng}`);
+            setPosition([lat, lng]);
+            setShowMap(true);
           }
           setLoading(false);
         },
@@ -139,13 +143,13 @@ const LocationPicker = ({ onLocationSelect, initialLat, initialLng }: LocationPi
         </Button>
       </div>
 
-      {showMap && (
+      {showMap && position && (
         <div className="space-y-2">
           <div className="h-[400px] rounded-lg overflow-hidden border">
             <MapContainer
-              key="location-picker-map"
-              center={position || [20, 0]}
-              zoom={position ? 13 : 2}
+              key={`map-${position[0]}-${position[1]}`}
+              center={position}
+              zoom={13}
               style={{ height: '100%', width: '100%' }}
               scrollWheelZoom={true}
             >
