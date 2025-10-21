@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/integrations/supabase/auth";
 import { AuthForm } from "@/components/AuthForm";
 import { NotificationBar } from "@/components/NotificationBar";
 import { RequestCard } from "@/components/RequestCard";
@@ -11,38 +12,18 @@ import { LogOut, Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const Index = () => {
-  const [user, setUser] = useState<any>(null);
+  const { user, loading, signOut } = useAuth();
   const [requests, setRequests] = useState<any[]>([]);
   const [showCreateForm, setShowCreateForm] = useState(false);
-  const [loading, setLoading] = useState(true);
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [urgencyFilter, setUrgencyFilter] = useState<string>("all");
   const { toast } = useToast();
 
   useEffect(() => {
-    checkUser();
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        fetchRequests();
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
-
-  const checkUser = async () => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    setUser(user);
     if (user) {
-      await fetchRequests();
+      fetchRequests();
     }
-    setLoading(false);
-  };
+  }, [user]);
 
   const fetchRequests = async () => {
     const { data, error } = await supabase
@@ -56,7 +37,7 @@ const Index = () => {
   };
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut();
+    await signOut();
     toast({ title: "Signed out successfully" });
   };
 
@@ -69,7 +50,7 @@ const Index = () => {
   }
 
   if (!user) {
-    return <AuthForm onAuthSuccess={checkUser} />;
+    return <AuthForm onAuthSuccess={() => {}} />;
   }
 
   const myRequests = requests.filter((req) => req.user_id === user.id);
