@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
 import { Button } from './ui/button';
 import { MapPin, Loader2 } from 'lucide-react';
@@ -20,14 +20,19 @@ interface LocationPickerProps {
   initialLng?: number;
 }
 
-function LocationMarker({ position, setPosition }: any) {
+interface LocationMarkerProps {
+  position: [number, number] | null;
+  setPosition: (pos: [number, number]) => void;
+}
+
+function LocationMarker({ position, setPosition }: LocationMarkerProps) {
   useMapEvents({
     click(e) {
       setPosition([e.latlng.lat, e.latlng.lng]);
     },
   });
 
-  return position ? <Marker position={position} /> : null;
+  return position ? <Marker position={position}></Marker> : null;
 }
 
 const LocationPicker = ({ onLocationSelect, initialLat, initialLng }: LocationPickerProps) => {
